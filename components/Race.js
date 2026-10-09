@@ -1,77 +1,104 @@
-const noflo = require('noflo');
+import { Component } from "@noflo/noflo";
 
-function prepareScope() {
-  const data = {
-    resolved: false,
-    rejected: false,
-  };
-  return data;
-}
-
-exports.getComponent = () => {
-  const c = new noflo.Component();
-  c.description = 'Like Promise.race, wait for result from all connected inputs and send first result or an error out';
-  c.icon = 'compress';
-  c.inPorts.add('in', {
-    datatype: 'all',
-    addressable: true,
+/**
+ * Like Promise.race: sends the first result stream from the connected
+ * `in` connections, or an `error` if one arrives first. Later streams
+ * are dropped.
+ * @returns {import("@noflo/noflo").Component} The configured component
+ */
+export function getComponent() {
+  const c = new Component({
+    description:
+      "Like Promise.race, wait for result from all connected inputs and send first result or an error out",
+    icon: "compress",
+    forwardBrackets: {},
+    inPorts: {
+      in: { datatype: "all", addressable: true, required: true },
+      error: { datatype: "object" },
+    },
+    outPorts: {
+      out: { datatype: "array" },
+      error: { datatype: "object" },
+    },
   });
-  c.inPorts.add('error',
-    { datatype: 'object' });
-  c.outPorts.add('out',
-    { datatype: 'array' });
-  c.outPorts.add('error',
-    { datatype: 'object' });
-  c.pending = {};
-  c.tearDown = (callback) => {
-    c.pending = {};
-    return callback();
+
+  /**
+   * @typedef {Object} PendingScope
+   * @property {boolean} resolved
+   * @property {boolean} rejected
+   */
+
+  /** @type {Map<string, PendingScope>} */
+  const pending = new Map();
+  /**
+   * @param {string|null} scope
+   * @returns {PendingScope}
+   */
+  const prepareScope = (scope) => {
+    const key = scope ?? "null";
+    let state = pending.get(key);
+    if (!state) {
+      state = { resolved: false, rejected: false };
+      pending.set(key, state);
+    }
+    return state;
   };
-  c.forwardBrackets = {};
-  return c.process((input, output) => {
-    if (input.hasData('error')) {
+  c.tearDown = async () => {
+    pending.clear();
+  };
+
+  c.process((input, output) => {
+    if (input.hasData("error")) {
       // There is a failure in this scope, reject it
-      const err = input.getData('error');
-      if (!c.pending[input.scope]) {
-        c.pending[input.scope] = prepareScope();
-      }
-      if (c.pending[input.scope].rejected || c.pending[input.scope].resolved) {
+      const err = input.getData("error");
+      const state = prepareScope(input.scope);
+      if (state.rejected || state.resolved) {
         // This scope was already resolved
         output.done();
         return;
       }
       // Mark scope as rejected
-      c.pending[input.scope].rejected = true;
+      state.rejected = true;
       output.sendDone({ error: err });
       return;
     }
 
     // See if we have any input results
-    const indexesWithStreams = input.attached('in').filter((idx) => input.hasStream(['in', idx]));
-    if (!indexesWithStreams.length) { return; }
-
-    if (!c.pending[input.scope]) {
-      c.pending[input.scope] = prepareScope();
+    const indexesWithStreams = /** @type {number[]} */ (
+      input.attached("in")
+    ).filter((idx) => input.hasStream(["in", idx]));
+    if (!indexesWithStreams.length) {
+      return;
     }
 
+    const state = prepareScope(input.scope);
+
     // Check if the execution was already resolved
-    if (c.pending[input.scope].rejected || c.pending[input.scope].resolved) {
-      indexesWithStreams.forEach((idx) => {
+    if (state.rejected || state.resolved) {
+      for (const idx of indexesWithStreams) {
         // Drop all packets that arrive after resolution
-        const stream = input.getStream(['in', idx]);
-        return Array.from(stream).map((ip) => ip.drop());
-      });
+        const stream = /** @type {import("@noflo/noflo").IP[]} */ (
+          input.getStream(["in", idx])
+        );
+        for (const ip of stream) {
+          ip.drop();
+        }
+      }
       output.done();
       return;
     }
 
     // Read results
-    const results = input.getStream(['in', indexesWithStreams[0]]).filter((ip) => ip.type === 'data');
+    const results = /** @type {import("@noflo/noflo").IP[]} */ (
+      input.getStream(["in", indexesWithStreams[0]])
+    ).filter((ip) => ip.type === "data");
 
     // Mark as resolved
-    c.pending[input.scope].resolved = true;
+    state.resolved = true;
     // Send data
     const data = results.map((ip) => ip.data);
     output.sendDone({ out: data });
   });
-};
+
+  return c;
+}

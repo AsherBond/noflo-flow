@@ -1,17 +1,27 @@
-# Flow Control for NoFlo
+# @noflo/flow
 
-This package provides utility components to control the flow within a
-[NoFlo](http://noflojs.org/) program.
+Flow Control for [NoFlo](http://noflojs.org/)
 
-It qualifies as a flow control component if it allows partial data to go
-to one out port versus another (or not at all).
+This package provides utility components for flow-control patterns in
+NoFlo programs: gating, throttling, joining, racing, and collecting
+streams.
 
-Feel free to contribute new components and graphs! I'll try to
-incorporate as soon as time allows.
+## Usage
 
-## Changes
+Install the package:
 
-* 0.8.0 (October 15 2020)
-  - Ported from CoffeeScript to modern ES6
-* 0.7.0 (November 17 2017)
-  - Changed `All` and `Race` components to always send results as arrays, regardless whether there is one or many
+    npm install @noflo/flow
+
+The components are then available under the `flow/` namespace, for
+example `flow/Gate` or `flow/CollectUntilIdle`.
+
+Components include:
+
+- `Accept`, `Deny`, `Gate`, `HasGroup` — filter and route streams
+- `All`, `Race`, `Concat`, `Collate`, `Merge`-style combining via
+  `CountedMerge` — combine results from multiple connections
+- `CollectUntilIdle`, `Stop`, `CountDown` — buffering and timing
+- `CleanSplit`, `CleanDisconnect`, `Fork`, `ReverseSplit`, `Reorder` —
+  stream splitting and reordering
+- `Throttle` — load-based throttling
+- `Watchdog` — deadman switch emitting when a stream stays silent

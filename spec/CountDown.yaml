@@ -1,0 +1,9 @@
+topic: flow/CountDown
+cases:
+  - name: emitting on the first bang
+    assertion: should send an empty IP when the count reaches zero
+    inputs:
+      in: true
+    expect:
+      out:
+        equals: null

@@ -1,59 +1,81 @@
-const noflo = require('noflo');
+import { Component } from "@noflo/noflo";
 
-function clear(c) {
-  if (!c.timeout) { return; }
-  clearTimeout(c.timeout.timeout);
-  c.timeout.ctx.deactivate();
-}
+/**
+ * Collects packets and sends them when input stops for a given timeout.
+ * The activation is deactivated while waiting so the network can idle.
+ * @returns {import("@noflo/noflo").Component} The configured component
+ */
+export function getComponent() {
+  const c = new Component({
+    description:
+      "Collect packets and send them when input stops after a given timeout",
+    inPorts: {
+      in: {
+        datatype: "all",
+        description: "IPs to collect until a timeout",
+        required: true,
+      },
+      timeout: {
+        datatype: "number",
+        description: "Amount of time to hold IPs for in milliseconds",
+        default: 300,
+        control: true,
+      },
+    },
+    outPorts: {
+      out: {
+        datatype: "all",
+        description: "IPs collected until the timeout",
+      },
+    },
+  });
 
-exports.getComponent = () => {
-  const c = new noflo.Component();
-  c.description = 'Collect packets and send them when input stops after a given timeout';
-  c.inPorts.add('in', {
-    datatype: 'all',
-    description: 'IPs to collect until a timeout',
-  });
-  c.inPorts.add('timeout', {
-    datatype: 'number',
-    description: 'Amount of time to hold IPs for in milliseconds',
-    default: 300,
-    control: true,
-  });
-  c.outPorts.add('out', {
-    datatype: 'all',
-    description: 'IPs collected until the timeout',
-  });
-  c.timeout = null;
-  c.tearDown = (callback) => {
-    clear(c);
-    return callback();
+  /**
+   * @typedef {Object} PendingTimeout
+   * @property {{ deactivate(): void }} ctx
+   * @property {NodeJS.Timeout} timeout
+   */
+
+  /** @type {PendingTimeout|null} */
+  let pending = null;
+  const clear = () => {
+    if (!pending) {
+      return;
+    }
+    clearTimeout(pending.timeout);
+    pending.ctx.deactivate();
+    pending = null;
   };
-  return c.process((input, output, context) => {
-    let timeout;
-    if (!input.hasData('in')) {
+  c.tearDown = async () => {
+    clear();
+  };
+
+  c.process((input, output, context) => {
+    let timeout = 300;
+    if (!input.hasData("in")) {
       return;
     }
-    if (input.attached('timeout').length && !input.hasData('timeout')) {
+    if (input.attached("timeout").length && !input.hasData("timeout")) {
       return;
     }
-    if (input.hasData('timeout')) {
-      timeout = parseInt(input.getData('timeout'), 10);
-    } else {
-      timeout = 300;
+    if (input.hasData("timeout")) {
+      timeout = Number.parseInt(input.getData("timeout"), 10);
     }
 
-    clear(c);
+    clear();
 
-    c.timeout = {
+    pending = {
       ctx: context,
       timeout: setTimeout(() => {
-        while (input.hasData('in')) {
-          const packet = input.getData('in');
+        pending = null;
+        while (input.hasData("in")) {
+          const packet = input.getData("in");
           output.send({ out: packet });
         }
-        return output.done();
-      },
-      timeout),
+        output.done();
+      }, timeout),
     };
   });
-};
+
+  return c;
+}

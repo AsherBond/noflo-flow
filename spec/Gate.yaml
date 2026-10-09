@@ -1,0 +1,10 @@
+topic: flow/Gate
+cases:
+  - name: forwarding while open
+    assertion: should forward data when the gate is open
+    inputs:
+      open: true
+      in: "hello"
+    expect:
+      out:
+        equals: "hello"

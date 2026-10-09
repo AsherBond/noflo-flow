@@ -1,0 +1,10 @@
+topic: flow/Stop
+cases:
+  - name: releasing buffered packets on ready
+    assertion: should send the buffered packet out
+    inputs:
+      in: "hello"
+      ready: true
+    expect:
+      out:
+        equals: "hello"

@@ -1,60 +1,80 @@
-const noflo = require('noflo');
+import { Component, IP } from "@noflo/noflo";
 
-exports.getComponent = () => {
-  const c = new noflo.Component();
-  c.description = 'count down from particular number, by default 1, and send an empty IP when it hits 0';
-  c.inPorts.add('in', {
-    datatype: 'bang',
-    description: 'IPs to decrease the count down',
+/**
+ * Counts down from a number (default 1) as bangs arrive on `in`, and
+ * sends an empty data IP when the count reaches zero. Repeats by
+ * default.
+ * @returns {import("@noflo/noflo").Component} The configured component
+ */
+export function getComponent() {
+  const c = new Component({
+    description:
+      "count down from particular number, by default 1, and send an empty IP when it hits 0",
+    inPorts: {
+      in: {
+        datatype: "bang",
+        description: "IPs to decrease the count down",
+        required: true,
+      },
+      count: {
+        datatype: "int",
+        description: "Count down starting number",
+        default: 1,
+        control: true,
+      },
+      repeat: {
+        datatype: "boolean",
+        description: "Repeat the count down mechanism if true",
+        default: true,
+        control: true,
+      },
+    },
+    outPorts: {
+      out: {
+        datatype: "bang",
+        description: "IP emitted when the count reach 0",
+      },
+      count: {
+        datatype: "int",
+        description: "Number of packets received in this cycle",
+      },
+    },
   });
-  c.inPorts.add('count', {
-    datatype: 'int',
-    description: 'Count down starting number',
-    default: 1,
-    control: true,
-  });
-  c.inPorts.add('repeat', {
-    datatype: 'boolean',
-    description: 'Repeat the count down mechanism if true',
-    default: true,
-    control: true,
-  });
-  c.outPorts.add('out', {
-    datatype: 'bang',
-    description: 'IP emitted when the count reach 0',
-  });
-  c.outPorts.add('count', {
-    datatype: 'int',
-    description: 'Number of packets received in this cycle',
-  });
-  c.received = 0;
-  c.tearDown = (callback) => {
-    c.received = 0;
-    callback();
+
+  let received = 0;
+  c.tearDown = async () => {
+    received = 0;
   };
-  return c.process((input, output) => {
-    let count; let
-      repeat;
-    if (!input.hasData('in')) { return; }
-    if (input.attached('count') && !input.hasData('count')) { return; }
-    if (input.attached('repeat') && !input.hasData('repeat')) { return; }
-    if (input.hasData('count')) {
-      count = input.getData('count');
-    } else {
-      count = 1;
+
+  c.process((input, output) => {
+    if (!input.hasData("in")) {
+      return;
     }
-    if (input.hasData('repeat')) {
-      repeat = input.getData('repeat');
-    } else {
-      repeat = true;
+    if (input.attached("count").length && !input.hasData("count")) {
+      return;
     }
-    input.getData('in');
-    c.received += 1;
-    output.send({ count: c.received });
-    if (c.received === count) {
-      output.send({ out: new noflo.IP('data', null) });
-      if (repeat) { c.received = 0; }
+    if (input.attached("repeat").length && !input.hasData("repeat")) {
+      return;
+    }
+    let count = 1;
+    if (input.hasData("count")) {
+      count = input.getData("count");
+    }
+    let repeat = true;
+    if (input.hasData("repeat")) {
+      repeat = input.getData("repeat");
+    }
+    input.getData("in");
+    received += 1;
+    output.send({ count: received });
+    if (received === count) {
+      output.send({ out: new IP("data", null) });
+      if (repeat) {
+        received = 0;
+      }
     }
     output.done();
   });
-};
+
+  return c;
+}

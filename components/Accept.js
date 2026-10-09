@@ -1,47 +1,71 @@
-const noflo = require('noflo');
+import { Component } from "@noflo/noflo";
 
-exports.getComponent = () => {
-  const c = new noflo.Component();
-  c.description = 'accept and forward certain incoming packets';
-  c.inPorts.add('in', {
-    datatype: 'all',
-    description: 'An IP to be forwarded if accepted',
+/**
+ * Forwards only the incoming data IPs whose value was previously named on
+ * the `accept` port. Data arriving before any accept is forwarded never.
+ * @returns {import("@noflo/noflo").Component} The configured component
+ */
+export function getComponent() {
+  const c = new Component({
+    description: "accept and forward certain incoming packets",
+    inPorts: {
+      in: {
+        datatype: "all",
+        description: "An IP to be forwarded if accepted",
+        required: true,
+      },
+      accept: {
+        datatype: "all",
+        description: "IP to be accepted",
+      },
+      reset: {
+        datatype: "bang",
+        description: "Reset the list accepted IPs",
+      },
+    },
+    outPorts: {
+      out: { datatype: "all" },
+    },
   });
-  c.inPorts.add('accept', {
-    datatype: 'all',
-    description: 'IP to be accepted',
-  });
-  c.inPorts.add('reset', {
-    datatype: 'bang',
-    description: 'Reset the list accepted IPs',
-  });
-  c.outPorts.add('out',
-    { datatype: 'all' });
-  c.accepts = {};
-  c.tearDown = (callback) => {
-    c.accepts = {};
-    callback();
+
+  /** @type {Map<string, unknown[]>} */
+  const accepts = new Map();
+  c.tearDown = async () => {
+    accepts.clear();
   };
-  return c.process((input, output) => {
-    if (input.hasData('accept')) {
-      const accept = input.getData('accept');
-      if (!c.accepts[input.scope]) { c.accepts[input.scope] = []; }
-      c.accepts[input.scope].push(accept);
+
+  c.process((input, output) => {
+    if (input.hasData("accept")) {
+      const accept = input.getData("accept");
+      const key = input.scope ?? "null";
+      let list = accepts.get(key);
+      if (!list) {
+        list = [];
+        accepts.set(key, list);
+      }
+      list.push(accept);
       output.done();
       return;
     }
-    if (input.hasData('reset')) {
-      input.getData('reset');
-      c.accepts = {};
+    if (input.hasData("reset")) {
+      input.getData("reset");
+      accepts.clear();
       output.done();
       return;
     }
-    if (!input.hasData('in')) { return; }
-    const data = input.getData('in');
-    if (c.accepts[input.scope].indexOf(data) === -1) {
+    if (!input.hasData("in")) {
+      return;
+    }
+    const data = input.getData("in");
+    const list = accepts.get(input.scope ?? "null");
+    // 1.x crashed when data arrived before any accept; treat a missing
+    // list as accepting nothing
+    if (!list?.includes(data)) {
       output.done();
       return;
     }
     output.sendDone({ out: data });
   });
-};
+
+  return c;
+}

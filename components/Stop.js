@@ -1,32 +1,51 @@
-const noflo = require('noflo');
+import { Component } from "@noflo/noflo";
 
-exports.getComponent = () => {
-  const c = new noflo.Component();
-  c.description = 'Stop everything that\'s received and send out once we\'re told that we\'re ready to send.';
-  c.icon = 'stop-circle';
-  c.inPorts.add('in', {
-    datatype: 'all',
-    description: 'IPs to buffer until an IP arrives on the ready port',
+/**
+ * Buffers everything received until a bang arrives on `ready`, then
+ * releases all stored IPs at once. Keeps the 1.x default bracket
+ * forwarding (the 1.x source's `forwardBracets` typo meant forwarding
+ * was never disabled).
+ * @returns {import("@noflo/noflo").Component} The configured component
+ */
+export function getComponent() {
+  const c = new Component({
+    description:
+      "Stop everything that's received and send out once we're told that we're ready to send.",
+    icon: "stop-circle",
+    inPorts: {
+      in: {
+        datatype: "all",
+        description: "IPs to buffer until an IP arrives on the ready port",
+        required: true,
+      },
+      ready: {
+        datatype: "bang",
+        description: "Trigger the emission of all the stored IPs",
+      },
+    },
+    outPorts: {
+      out: {
+        datatype: "all",
+        description: "IPs forwarded from the in port",
+      },
+    },
   });
-  c.inPorts.add('ready', {
-    datatype: 'bang',
-    description: 'Trigger the emission of all the stored IPs',
-  });
-  c.outPorts.add('out', {
-    datatype: 'all',
-    description: 'IPs forwarded from the in port',
-  });
-  c.forwardBracets = {};
-  return c.process((input, output) => {
-    if (!input.hasData('ready', 'in')) { return; }
-    input.getData('ready');
-    const packets = [];
-    while (input.has('in')) {
-      packets.push(input.get('in'));
+
+  c.process((input, output) => {
+    if (!input.hasData("ready", "in")) {
+      return;
     }
-    packets.forEach((packet) => {
+    input.getData("ready");
+    /** @type {import("@noflo/noflo").IP[]} */
+    const packets = [];
+    while (input.has("in")) {
+      packets.push(/** @type {import("@noflo/noflo").IP} */ (input.get("in")));
+    }
+    for (const packet of packets) {
       output.send({ out: packet });
-    });
+    }
     output.done();
   });
-};
+
+  return c;
+}

@@ -1,0 +1,10 @@
+topic: flow/Deny
+cases:
+  - name: forwarding a non-denied packet
+    assertion: should forward data that is not denied
+    inputs:
+      deny: "no"
+      in: "yes"
+    expect:
+      out:
+        equals: "yes"

@@ -1,91 +1,112 @@
-const noflo = require('noflo');
+import { Component } from "@noflo/noflo";
 
-function prepareScope() {
-  const data = {
-    results: {},
-    resolved: false,
-    rejected: false,
-  };
-  return data;
-}
-
-exports.getComponent = () => {
-  const c = new noflo.Component();
-  c.description = 'Like Promise.all, wait for result from all connected inputs and send them or an error out';
-  c.icon = 'compress';
-  c.inPorts.add('in', {
-    datatype: 'all',
-    addressable: true,
+/**
+ * Waits for a result stream from every connected `in` connection and
+ * sends all of them as an array, like Promise.all. An `error` IP rejects
+ * the whole scope.
+ * @returns {import("@noflo/noflo").Component} The configured component
+ */
+export function getComponent() {
+  const c = new Component({
+    description:
+      "Like Promise.all, wait for result from all connected inputs and send them or an error out",
+    icon: "compress",
+    forwardBrackets: {},
+    inPorts: {
+      in: { datatype: "all", addressable: true, required: true },
+      error: { datatype: "object" },
+    },
+    outPorts: {
+      out: { datatype: "array" },
+      error: { datatype: "object" },
+    },
   });
-  c.inPorts.add('error',
-    { datatype: 'object' });
-  c.outPorts.add('out',
-    { datatype: 'array' });
-  c.outPorts.add('error',
-    { datatype: 'object' });
-  c.pending = {};
-  c.tearDown = (callback) => {
-    c.pending = {};
-    callback();
+
+  /**
+   * @typedef {Object} PendingScope
+   * @property {Record<number, import("@noflo/noflo").IP[]>} results
+   * @property {boolean} resolved
+   * @property {boolean} rejected
+   */
+
+  /** @type {Map<string, PendingScope>} */
+  const pending = new Map();
+  /**
+   * @param {string|null} scope
+   * @returns {PendingScope}
+   */
+  const prepareScope = (scope) => {
+    const key = scope ?? "null";
+    let state = pending.get(key);
+    if (!state) {
+      state = { results: {}, resolved: false, rejected: false };
+      pending.set(key, state);
+    }
+    return state;
   };
-  c.forwardBrackets = {};
-  return c.process((input, output) => {
-    if (input.hasData('error')) {
+  c.tearDown = async () => {
+    pending.clear();
+  };
+
+  c.process((input, output) => {
+    if (input.hasData("error")) {
       // There is a failure in this scope, reject it
-      const err = input.getData('error');
-      if (!c.pending[input.scope]) {
-        c.pending[input.scope] = prepareScope();
-      }
-      if (c.pending[input.scope].rejected || c.pending[input.scope].resolved) {
+      const err = input.getData("error");
+      const state = prepareScope(input.scope);
+      if (state.rejected || state.resolved) {
         // This scope was already resolved
         output.done();
         return;
       }
       // Mark scope as rejected
-      c.pending[input.scope].rejected = true;
+      state.rejected = true;
       // Drop any results since something failed
-      delete c.pending[input.scope].results;
+      state.results = {};
       output.sendDone({ error: err });
       return;
     }
 
     // See if we have any input results
-    const indexesWithStreams = input.attached('in').filter((idx) => input.hasStream(['in', idx]));
-    if (!indexesWithStreams.length) { return; }
-
-    if (!c.pending[input.scope]) {
-      c.pending[input.scope] = prepareScope();
+    const indexesWithStreams = /** @type {number[]} */ (
+      input.attached("in")
+    ).filter((idx) => input.hasStream(["in", idx]));
+    if (!indexesWithStreams.length) {
+      return;
     }
 
+    const state = prepareScope(input.scope);
+
     // Check if the execution was already resolved
-    if (c.pending[input.scope].rejected || c.pending[input.scope].resolved) {
-      indexesWithStreams.forEach((idx) => {
+    if (state.rejected || state.resolved) {
+      for (const idx of indexesWithStreams) {
         // Drop all packets that arrive after resolution
-        const stream = input.getStream(['in', idx]);
-        return stream.map((ip) => ip.drop());
-      });
+        const stream = /** @type {import("@noflo/noflo").IP[]} */ (
+          input.getStream(["in", idx])
+        );
+        for (const ip of stream) {
+          ip.drop();
+        }
+      }
       output.done();
       return;
     }
 
     // Read results
-    const {
-      results,
-    } = c.pending[input.scope];
-    indexesWithStreams.forEach((idx) => {
-      const stream = input.getStream(['in', idx]).filter((ip) => ip.type === 'data');
+    for (const idx of indexesWithStreams) {
+      const stream = /** @type {import("@noflo/noflo").IP[]} */ (
+        input.getStream(["in", idx])
+      ).filter((ip) => ip.type === "data");
       // If this connection already sent, disregard the new stream
-      if (results[idx]) { return; }
-      // Add to results
-      if (!results[idx]) { results[idx] = []; }
-      results[idx] = results[idx].concat(stream);
-    });
+      if (state.results[idx]) {
+        continue;
+      }
+      state.results[idx] = stream;
+    }
 
     // Check if we have all results
-    const attached = input.attached('in');
-    for (let i = 0; i < attached.length; i += 1) {
-      const idx = attached[i];
-      if (!results[idx] || !results[idx].length) {
+    const attached = /** @type {number[]} */ (input.attached("in"));
+    for (const idx of attached) {
+      if (!state.results[idx]?.length) {
         // Still waiting
         output.done();
         return;
@@ -93,11 +114,15 @@ exports.getComponent = () => {
     }
 
     // Mark as resolved
-    c.pending[input.scope].resolved = true;
+    state.resolved = true;
     // Send data
-    const resultData = input.attached('in').map((idx) => results[idx].map((ip) => ip.data));
+    const resultData = attached.map((idx) =>
+      (state.results[idx] ?? []).map((ip) => ip.data),
+    );
     output.sendDone({ out: resultData });
     // Clean packets
-    delete c.pending[input.scope].results;
+    state.results = {};
   });
-};
+
+  return c;
+}

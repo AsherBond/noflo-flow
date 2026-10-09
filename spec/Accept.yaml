@@ -1,0 +1,10 @@
+topic: flow/Accept
+cases:
+  - name: forwarding an accepted packet
+    assertion: should forward accepted data
+    inputs:
+      accept: "yes"
+      in: "yes"
+    expect:
+      out:
+        equals: "yes"
