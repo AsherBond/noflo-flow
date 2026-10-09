@@ -55,7 +55,7 @@ describe("All component", () => {
       outIps.find((ip) => ip.type === "data")
     ).data;
     assert.deepEqual(data, [["a"], ["b"]]);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("rejects the scope when an error arrives", async () => {
@@ -71,7 +71,7 @@ describe("All component", () => {
       outIps.filter((ip) => ip.type === "data"),
       [],
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -96,7 +96,7 @@ describe("Race component", () => {
     s1.post(new noflo.IP("data", "second"));
     await new Promise((resolve) => setTimeout(resolve, 50));
     assert.equal(outIps.filter((ip) => ip.type === "data").length, 1);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -123,7 +123,7 @@ describe("CollectUntilIdle component", () => {
       outIps.filter((ip) => ip.type === "data").map((ip) => ip.data),
       ["a", "b", "c"],
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("resets the timer when new input arrives", async () => {
@@ -148,7 +148,7 @@ describe("CollectUntilIdle component", () => {
       outIps,
       (ips) => ips.filter((ip) => ip.type === "data").length === 2,
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -178,7 +178,7 @@ describe("CountedMerge component", () => {
       outIps.filter((ip) => ip.type === "data").map((ip) => ip.data),
       ["a"],
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("merges up to the configured threshold", () => {
@@ -191,7 +191,7 @@ describe("CountedMerge component", () => {
       outIps.filter((ip) => ip.type === "data").map((ip) => ip.data),
       ["a", "b"],
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -241,7 +241,7 @@ describe("CountDown component", () => {
       ).data,
       null,
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("counts down from a configured number", () => {
@@ -259,7 +259,7 @@ describe("CountDown component", () => {
       [1, 2, 3],
     );
     assert.equal(outIps.filter((ip) => ip.type === "data").length, 1);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("repeats the countdown by default", () => {
@@ -272,7 +272,7 @@ describe("CountDown component", () => {
       [1, 1],
     );
     assert.equal(outIps.filter((ip) => ip.type === "data").length, 2);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("stops repeating when repeat is false", () => {
@@ -285,7 +285,7 @@ describe("CountDown component", () => {
       [1, 2],
     );
     assert.equal(outIps.filter((ip) => ip.type === "data").length, 1);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -308,7 +308,7 @@ describe("Stop component", () => {
     );
     readySocket.post(new noflo.IP("data", null));
     assert.deepEqual(render(outIps), ["DATA 1", "DATA 2", "DATA 3"]);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -327,7 +327,7 @@ describe("Watchdog component", () => {
     await waitStream(outIps, (ips) => ips.length > 0);
     assert.equal(outIps[0].type, "data");
     assert.equal(outIps[0].data, null);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("resets the window on activity", async () => {
@@ -351,6 +351,6 @@ describe("Watchdog component", () => {
       outIps.filter((ip) => ip.type === "data"),
       [],
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });

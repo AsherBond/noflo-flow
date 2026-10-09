@@ -27,7 +27,7 @@ describe("CleanSplit component", () => {
     inSocket.post(new noflo.IP("closeBracket", "foo"));
     await new Promise((resolve) => setTimeout(resolve, 30));
     assert.deepEqual(render(outIps), ["< foo", 'DATA "a"', ">"]);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -48,7 +48,7 @@ describe("CleanDisconnect component", () => {
     inB.post(new noflo.IP("data", "b"));
     assert.deepEqual(render(outAIps), ['DATA "a"']);
     assert.deepEqual(render(outBIps), ['DATA "b"']);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -84,7 +84,7 @@ describe("Concat component", () => {
       dataIps.map((ip) => ip.index),
       [0, 1],
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -118,7 +118,7 @@ describe("Fork component", () => {
       ),
       [["a"], ["a"], ["a"]],
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("sends only to the configured port indexes", () => {
@@ -131,7 +131,7 @@ describe("Fork component", () => {
       ),
       [[], [], ["a"]],
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -160,7 +160,7 @@ describe("Reorder component", () => {
       outBIps.filter((ip) => ip.type === "data").map((ip) => ip.data),
       ["a"],
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -184,7 +184,7 @@ describe("ReverseSplit component", () => {
       ips1.filter((ip) => ip.type === "data").map((ip) => ip.data),
       ["a"],
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -208,7 +208,7 @@ describe("Throttle component", () => {
       outIps.filter((ip) => ip.type === "data").map((ip) => ip.data),
       ["a"],
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("holds packets while the load is at or above the max", async () => {
@@ -230,6 +230,6 @@ describe("Throttle component", () => {
       outIps.filter((ip) => ip.type === "data"),
       [],
     );
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });

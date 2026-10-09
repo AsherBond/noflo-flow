@@ -25,7 +25,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@noflo/noflo": "^2.0.0-alpha.0"
+    "@noflo/noflo": "^2.0.0-alpha.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

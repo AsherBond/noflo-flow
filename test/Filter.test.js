@@ -35,7 +35,7 @@ describe("Accept component", () => {
     inSocket.post(new noflo.IP("data", "yes"));
     inSocket.post(new noflo.IP("data", "no"));
     assert.deepEqual(render(outIps), ['DATA "yes"']);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("forwards nothing before any accept is registered", () => {
@@ -43,7 +43,7 @@ describe("Accept component", () => {
     // 1.x crashed here; 2.x drops instead
     inSocket.post(new noflo.IP("data", "anything"));
     assert.deepEqual(render(outIps), []);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("reset clears the accept list", () => {
@@ -52,7 +52,7 @@ describe("Accept component", () => {
     resetSocket.post(new noflo.IP("data", null));
     inSocket.post(new noflo.IP("data", "yes"));
     assert.deepEqual(render(outIps), []);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -83,14 +83,14 @@ describe("Deny component", () => {
     inSocket.post(new noflo.IP("data", "yes"));
     inSocket.post(new noflo.IP("data", "no"));
     assert.deepEqual(render(outIps), ['DATA "yes"']);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("forwards everything before any deny is registered", () => {
     const { c, inSocket, outIps } = build();
     inSocket.post(new noflo.IP("data", "anything"));
     assert.deepEqual(render(outIps), ['DATA "anything"']);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("reset clears the deny list", () => {
@@ -99,7 +99,7 @@ describe("Deny component", () => {
     resetSocket.post(new noflo.IP("data", null));
     inSocket.post(new noflo.IP("data", "no"));
     assert.deepEqual(render(outIps), ['DATA "no"']);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -128,7 +128,7 @@ describe("Gate component", () => {
     const { c, inSocket, outIps } = build();
     inSocket.post(new noflo.IP("data", 1));
     assert.deepEqual(render(outIps), []);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("forwards only packets sent while the gate is open", () => {
@@ -147,7 +147,7 @@ describe("Gate component", () => {
     inSocket.post(new noflo.IP("data", 4));
     inSocket.post(new noflo.IP("closeBracket", "foo"));
     assert.deepEqual(render(outIps), ["DATA 2", "< bar", "DATA 3", ">"]);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
 
@@ -183,7 +183,7 @@ describe("HasGroup component", () => {
     inSocket.post(new noflo.IP("closeBracket", "foo"));
     assert.deepEqual(render(yesIps), ["< foo", 'DATA "a"', ">"]);
     assert.deepEqual(noIps, []);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("routes non-matching groups to no", () => {
@@ -194,7 +194,7 @@ describe("HasGroup component", () => {
     inSocket.post(new noflo.IP("closeBracket", "bar"));
     assert.deepEqual(yesIps, []);
     assert.deepEqual(render(noIps), ["< bar", 'DATA "a"', ">"]);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("matches groups by regexp", () => {
@@ -205,7 +205,7 @@ describe("HasGroup component", () => {
     inSocket.post(new noflo.IP("closeBracket", "bar"));
     assert.deepEqual(render(yesIps), ["< bar", 'DATA "a"', ">"]);
     assert.deepEqual(noIps, []);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 
   it("routes ungrouped streams to no", () => {
@@ -213,6 +213,6 @@ describe("HasGroup component", () => {
     inSocket.post(new noflo.IP("data", "a"));
     assert.deepEqual(render(noIps), ['DATA "a"']);
     assert.deepEqual(yesIps, []);
-    c.tearDown?.(() => {});
+    c.tearDown?.();
   });
 });
